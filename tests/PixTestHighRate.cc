@@ -711,7 +711,13 @@ void PixTestHighRate::doRunDaq() {
     bookHist("daqbbtest");
     v = mapsWithString(fHitMap, "daqbbtest");
   }
-
+  fHitMap.clear();
+  vector<TH2D*> qv = mapsWithString(fHitMap, "daqbbqtest");
+  if (0 == qv.size()) {
+    bookHist("daqbbqtest");
+    qv = mapsWithString(fHitMap, "daqbbqtest");
+  }
+  
   banner(Form("PixTestHighRate::runDaq() running for %d seconds", fParRunSeconds));
 
   fDirectory->cd();
@@ -759,7 +765,7 @@ void PixTestHighRate::doRunDaq() {
 
   // -- take data
   fDirectory->cd();
-  doHitMap(fParRunSeconds, v);
+  doHitMap(fParRunSeconds, v, qv);
 
   // -- display
   TH2D *h = (TH2D*)(fHistList.back());
@@ -774,7 +780,11 @@ void PixTestHighRate::doRunDaq() {
     LOG(logDEBUG) << "analyzing " << v[i]->GetName();
     for (int ix = 0; ix < v[i]->GetNbinsX(); ++ix) {
       for (int iy = 0; iy < v[i]->GetNbinsY(); ++iy) {
-	if (0 == v[i]->GetBinContent(ix+1, iy+1)) ++cnt;
+        if (0 == v[i]->GetBinContent(ix+1, iy+1)) ++cnt;
+        if (0 != qv[i]->GetBinContent(ix+1, iy+1)) {
+          double average_charge = qv[i]->GetBinContent(ix+1,iy+1)/v[i]->GetBinContent(ix+1,iy+1);
+          qv[i]->SetBinContent(ix+1,iy+1,average_charge);
+        }
       }
     }
     zPixelString += Form(" %4d ", cnt);
@@ -796,7 +806,7 @@ void PixTestHighRate::doRunDaq() {
 
 
 // ----------------------------------------------------------------------
-void PixTestHighRate::doHitMap(int nseconds, vector<TH2D*> h) {
+void PixTestHighRate::doHitMap(int nseconds, vector<TH2D*> h, vector<TH2D*> qh) {
 
   int totalPeriod = prepareDaq(fParTriggerFrequency, 50);
   fApi->daqStart();
@@ -817,7 +827,7 @@ void PixTestHighRate::doHitMap(int nseconds, vector<TH2D*> h) {
       LOG(logINFO) << "run duration " << seconds << " seconds, buffer almost full ("
 		   << (int)perFull << "%), pausing triggers.";
       fApi->daqTriggerLoopHalt();
-      fillMap(h);
+      fillMap(h,qh);
       LOG(logINFO) << "Resuming triggers.";
       t.Start(kFALSE);
       fApi->daqTriggerLoop(finalPeriod);
@@ -835,24 +845,28 @@ void PixTestHighRate::doHitMap(int nseconds, vector<TH2D*> h) {
   fApi->daqTriggerLoopHalt();
   fApi->daqStop();
 
-  fillMap(h);
+  fillMap(h,qh);
   finalCleanup();
 
 }
 
 // ----------------------------------------------------------------------
-void PixTestHighRate::fillMap(vector<TH2D*> hist) {
+void PixTestHighRate::fillMap(vector<TH2D*> hist, vector<TH2D*> qhist) {
 
   int pixCnt(0);
   vector<pxar::Event> daqdat;
   try { daqdat = fApi->daqGetEventBuffer(); }
   catch(pxar::DataNoEvent &) {}
+  double q=0;
 
   for(std::vector<pxar::Event>::iterator it = daqdat.begin(); it != daqdat.end(); ++it) {
     pixCnt += it->pixels.size();
 
     for (unsigned int ipix = 0; ipix < it->pixels.size(); ++ipix) {
+      if (fPhCalOK) q = fPhCal.vcal(it->pixels[ipix].roc(), it->pixels[ipix].column(), it->pixels[ipix].row(), it->pixels[ipix].value());
+      else q = 0;
       hist[getIdxFromId(it->pixels[ipix].roc())]->Fill(it->pixels[ipix].column(), it->pixels[ipix].row());
+      qhist[getIdxFromId(it->pixels[ipix].roc())]->Fill(it->pixels[ipix].column(), it->pixels[ipix].row(),q);
     }
   }
   LOG(logDEBUG) << "Processing Data: " << daqdat.size() << " events with " << pixCnt << " pixels";
