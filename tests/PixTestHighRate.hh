@@ -15,7 +15,7 @@ public:
   virtual bool setParameter(std::string parName, std::string sval); 
   void init(); 
   void setToolTips();
-  void bookHist(std::string); 
+  void bookHist(std::string, bool bookchargemap); 
 
   void runCommand(std::string command); 
   void doTest();
@@ -48,7 +48,8 @@ private:
   bool          fDaq_loop;
   
   std::vector<TH2D*> fHitMap;
-  
+  std::vector<TH2D*> fChargeMap;
+
   ClassDef(PixTestHighRate, 1)
 
 };

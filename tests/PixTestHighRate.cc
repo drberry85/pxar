@@ -193,7 +193,7 @@ void PixTestHighRate::setToolTips() {
 
 
 // ----------------------------------------------------------------------
-void PixTestHighRate::bookHist(string name) {
+void PixTestHighRate::bookHist(string name, bool bookchargemap=false) {
   fDirectory->cd();
   if (fParFillTree) bookTree();
 
@@ -208,11 +208,13 @@ void PixTestHighRate::bookHist(string name) {
     h2->SetMinimum(0.);
     h2->SetDirectory(fDirectory);
     fHistOptions.insert(make_pair(h2,"colz"));
-    fHitMap.push_back(h2);
+    if (bookchargemap) fChargeMap.push_back(h2);
+    else fHitMap.push_back(h2);
   }
 
-  copy(fHitMap.begin(), fHitMap.end(), back_inserter(fHistList));
-
+  if (bookchargemap) copy(fChargeMap.begin(), fChargeMap.end(), back_inserter(fHistList));
+  else copy(fHitMap.begin(), fHitMap.end(), back_inserter(fHistList));
+  
 }
 
 
@@ -711,13 +713,28 @@ void PixTestHighRate::doRunDaq() {
     bookHist("daqbbtest");
     v = mapsWithString(fHitMap, "daqbbtest");
   }
-  fHitMap.clear();
-  vector<TH2D*> qv = mapsWithString(fHitMap, "daqbbqtest");
+
+  vector<TH2D*> qv = mapsWithString(fChargeMap, "daqbbqtest");
   if (0 == qv.size()) {
-    bookHist("daqbbqtest");
-    qv = mapsWithString(fHitMap, "daqbbqtest");
+    bookHist("daqbbqtest",true);
+    qv = mapsWithString(fChargeMap, "daqbbqtest");
   }
-  
+
+  // -- renormalize the charge measurement
+  for (unsigned int i = 0; i < v.size(); ++i) {
+    if (v[i]->GetEntries() != 0 && qv[i]->GetEntries() != 0) {
+      LOG(logDEBUG) << "Renormalizing" << v[i]->GetName();
+      for (int ix = 0; ix < v[i]->GetNbinsX(); ++ix) {
+        for (int iy = 0; iy < v[i]->GetNbinsY(); ++iy) {
+          if (0 != v[i]->GetBinContent(ix+1, iy+1) && 0 != qv[i]->GetBinContent(ix+1, iy+1)) {
+            double new_charge = qv[i]->GetBinContent(ix+1,iy+1)*v[i]->GetBinContent(ix+1,iy+1);
+            qv[i]->SetBinContent(ix+1,iy+1,new_charge);
+          }
+        }
+      }
+    }
+  }
+ 
   banner(Form("PixTestHighRate::runDaq() running for %d seconds", fParRunSeconds));
 
   fDirectory->cd();
@@ -781,7 +798,7 @@ void PixTestHighRate::doRunDaq() {
     for (int ix = 0; ix < v[i]->GetNbinsX(); ++ix) {
       for (int iy = 0; iy < v[i]->GetNbinsY(); ++iy) {
         if (0 == v[i]->GetBinContent(ix+1, iy+1)) ++cnt;
-        if (0 != qv[i]->GetBinContent(ix+1, iy+1)) {
+        if (0 != v[i]->GetBinContent(ix+1, iy+1) && 0 != qv[i]->GetBinContent(ix+1, iy+1)) {
           double average_charge = qv[i]->GetBinContent(ix+1,iy+1)/v[i]->GetBinContent(ix+1,iy+1);
           qv[i]->SetBinContent(ix+1,iy+1,average_charge);
         }
