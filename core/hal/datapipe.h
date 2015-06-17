@@ -170,6 +170,8 @@ namespace pxar {
     std::vector<uint16_t> count;
     std::vector<uint16_t> shiftReg;
     std::vector<std::vector<uint16_t> > readback;
+    std::vector<rawEvent> databuffer;
+    int dumpdata=-1;
 
     // Error checking:
     void CheckEventValidity(int16_t roc_n);

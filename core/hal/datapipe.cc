@@ -154,6 +154,10 @@ namespace pxar {
     roc_Event.Clear();
     rawEvent *sample = Get();
 
+    unsigned int errorcount = decodingStats.errors_roc_missing() + decodingStats.errors_tbm_eventid_mismatch();
+    databuffer.push_back(*sample);
+    if (databuffer.size()>=6) databuffer.erase(databuffer.begin());
+    
     // Count possibe error states:
     if(sample->IsStartError()) { decodingStats.m_errors_event_start++; }
     if(sample->IsEndError()) { decodingStats.m_errors_event_stop++; }
@@ -307,6 +311,18 @@ namespace pxar {
     CheckEventValidity(roc_n);
 
     LOG(logDEBUGPIPES) << roc_Event;
+
+    if (errorcount <  decodingStats.errors_roc_missing() + decodingStats.errors_tbm_eventid_mismatch()) {
+      LOG(logDEBUG) << *sample;
+      LOG(logDEBUG) << "Event Buffer:";
+      for (size_t ibuff=0; ibuff < databuffer.size(); ibuff++) LOG(logDEBUG) << databuffer[ibuff];
+      databuffer.clear();
+      dumpdata = 5;
+    } else if (dumpdata > 0) {
+      LOG(logDEBUG) << *sample;
+      dumpdata--;
+    }
+    
     return &roc_Event;
   }
 
