@@ -261,6 +261,7 @@ void PixTestTiming::PhaseScan() {
     h2->SetDirectory(fDirectory);
     setTitles(h2, "160MHz Phase", "400 MHz Phase");
     h2->SetMinimum(0);
+    h2->SetMaximum(8);
     goodareahists.push_back(h2);
     NFunctionalTimings.push_back(0);
     NFunctionalTBMPhases.push_back(0);
