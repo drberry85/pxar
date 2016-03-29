@@ -364,4 +364,22 @@ protected:
 
 };
 
+class DRecord{
+public:
+  uint8_t channel;
+  uint8_t type;
+  enum Type{HIT=0, ROC_HEADER=4, TBM_HEADER=10, TRAILER=14, DUMMYHIT=15};
+  uint8_t id;
+  uint32_t w1,w2;
+  uint32_t data;
+  DRecord(uint8_t ch=0, uint8_t T=0xff, uint32_t D=0x00000000, uint16_t W1=0x000, uint16_t W2=0x0000, uint8_t Id=0){
+    channel = ch;
+    type = T;
+    data = D;
+    w1 = W1;
+    w2 = W2;
+    id = Id;
+  }
+};
+
 #endif
